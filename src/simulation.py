@@ -4,8 +4,10 @@ from sir import SIRModel
 import config as cfg
 
 class Simulation:
-    def __init__(self):
-        self.agents = [Agent(state="I" if i < cfg.INITIAL_INFECTED else "S") for i in range(cfg.POPULATION_SIZE)]
+    def __init__(self, width: int, height: int):
+        self.width = width
+        self.height = height
+        self.agents = [Agent(width, height, state="I" if i < cfg.INITIAL_INFECTED else "S") for i in range(cfg.POPULATION_SIZE)]
         self.sir_model = SIRModel(cfg.POPULATION_SIZE, cfg.BETA, cfg.GAMMA, cfg.INITIAL_INFECTED)
 
     def update(self):
@@ -29,7 +31,7 @@ class Simulation:
                 if random.random() < cfg.GAMMA:
                     agent.state = 'R'
 
-    def is_in_infection_radius(self, agent1, agent2):
+    def is_in_infection_radius(self, agent1: Agent, agent2: Agent):
         distance = (
             (agent1.x - agent2.x) ** 2 + (agent1.y - agent2.y) ** 2
         ) ** 0.5

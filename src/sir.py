@@ -1,10 +1,10 @@
 class SIRModel:
-    def __init__(self, population_size, beta, gamma, initial_infected):
+    def __init__(self, population_size: int, beta: float, gamma: float, initial_infected: int):
         self.population_size = population_size
         self.beta = beta
         self.gamma = gamma
         self.S = population_size - initial_infected
-        self.I  = initial_infected
+        self.I = initial_infected
         self.R = 0
 
     def update(self, dt=1):
