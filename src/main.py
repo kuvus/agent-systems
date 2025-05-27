@@ -49,6 +49,34 @@ def main():
     S_data_sim, I_data_sim, R_data_sim = [], [], []
     S_data_sir, I_data_sir, R_data_sir = [], [], []
 
+    # Initialize matplotlib figure once outside the loop
+    fig, axes = None, None
+    lines_sim = {}
+    lines_sir = {}
+    if cfg.SHOW_PLOTS:
+        plt.ion()
+        fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+
+        # Initialize simulation plot lines
+        (lines_sim["S"],) = axes[0].plot([], [], label="Zdrowi (Symulacja)", color="green")
+        (lines_sim["I"],) = axes[0].plot([], [], label="Chorzy (Symulacja)", color="red")
+        (lines_sim["R"],) = axes[0].plot([], [], label="Odporni (Symulacja)", color="blue")
+        axes[0].set_title("Symulacja Agentowa")
+        axes[0].set_xlabel("Czas")
+        axes[0].set_ylabel("Liczba osób")
+        axes[0].legend(loc="upper right")
+
+        # Initialize SIR model plot lines
+        (lines_sir["S"],) = axes[1].plot([], [], label="Zdrowi (Model SIR)", color="green", linestyle="--")
+        (lines_sir["I"],) = axes[1].plot([], [], label="Chorzy (Model SIR)", color="red", linestyle="--")
+        (lines_sir["R"],) = axes[1].plot([], [], label="Odporni (Model SIR)", color="blue", linestyle="--")
+        axes[1].set_title("Model SIR")
+        axes[1].set_xlabel("Czas")
+        axes[1].set_ylabel("Liczba osób")
+        axes[1].legend(loc="upper right")
+
+        plt.show(block=False)
+
     running = True
     t = 0
     while running:
@@ -66,9 +94,16 @@ def main():
         reset_hover = reset_button_rect.collidepoint(mouse_pos)
 
         if clicked:
-            if start_hover and simulation_state == "idle":
-                simulation_state = "running"
-                print("Simulation started")
+            if start_hover:
+                if simulation_state == "idle":
+                    simulation_state = "running"
+                    print("Simulation started")
+                elif simulation_state == "running":
+                    simulation_state = "paused"
+                    print("Simulation paused")
+                elif simulation_state == "paused":
+                    simulation_state = "running"
+                    print("Simulation resumed")
             elif reset_hover:
                 simulation_state = "idle"
                 simulation = Simulation(cfg.SIM_AREA_WIDTH, cfg.SIM_AREA_HEIGHT)
@@ -76,10 +111,22 @@ def main():
                 S_data_sim, I_data_sim, R_data_sim = [], [], []
                 S_data_sir, I_data_sir, R_data_sir = [], [], []
                 t = 0
+                if cfg.SHOW_PLOTS and fig is not None:
+                    lines_sim["S"].set_data([], [])
+                    lines_sim["I"].set_data([], [])
+                    lines_sim["R"].set_data([], [])
+                    lines_sir["S"].set_data([], [])
+                    lines_sir["I"].set_data([], [])
+                    lines_sir["R"].set_data([], [])
+                    axes[0].relim()
+                    axes[0].autoscale_view()
+                    axes[1].relim()
+                    axes[1].autoscale_view()
+                    fig.canvas.draw_idle() # Use draw_idle for efficiency
+                    fig.canvas.flush_events()
                 print("Simulation reset")
 
         if simulation_state == "running":
-
             simulation.update()
 
             S_sim, I_sim, R_sim = simulation.count_states()
@@ -98,70 +145,33 @@ def main():
                 I_data_sir.append(0)
                 R_data_sir.append(0)
 
-            if cfg.SHOW_PLOTS:
-                print("Generowanie wykresów...")
+            # Update plots only every 30 frames and only if plots are enabled
+            if cfg.SHOW_PLOTS and t % 60 == 0 and fig is not None:
+                # Update simulation data
+                lines_sim["S"].set_data(time_steps, S_data_sim)
+                lines_sim["I"].set_data(time_steps, I_data_sim)
+                lines_sim["R"].set_data(time_steps, R_data_sim)
+                axes[0].relim()
+                axes[0].autoscale_view()
 
-                plt.ion()
-                fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+                # Update SIR model data if available
+                if S_data_sir and any(S_data_sir):
+                    lines_sir["S"].set_data(time_steps, S_data_sir)
+                    lines_sir["I"].set_data(time_steps, I_data_sir)
+                    lines_sir["R"].set_data(time_steps, R_data_sir)
+                    axes[1].set_title("Model SIR") # Keep title update in case it changes
+                else:
+                    lines_sir["S"].set_data([], []) # Clear data if not available
+                    lines_sir["I"].set_data([], [])
+                    lines_sir["R"].set_data([], [])
+                    axes[1].set_title("Model SIR (brak danych)")
+                
+                axes[1].relim()
+                axes[1].autoscale_view()
 
-                if t % 30 == 0:
-
-                    axes[0].clear()
-                    axes[1].clear()
-
-                    axes[0].plot(
-                        time_steps,
-                        S_data_sim,
-                        label="Zdrowi (Symulacja)",
-                        color="green",
-                    )
-                    axes[0].plot(
-                        time_steps,
-                        I_data_sim,
-                        label="Chorzy (Symulacja)",
-                        color="red",
-                    )
-                    axes[0].plot(
-                        time_steps,
-                        R_data_sim,
-                        label="Odporni (Symulacja)",
-                        color="blue",
-                    )
-                    axes[0].set_title("Symulacja Agentowa")
-                    axes[0].set_xlabel("Czas")
-                    axes[0].set_ylabel("Liczba osób")
-                    axes[0].legend(loc="upper right")
-
-                    if S_data_sir:
-                        axes[1].plot(
-                            time_steps,
-                            S_data_sir,
-                            label="Zdrowi (Model SIR)",
-                            color="green",
-                            linestyle="--",
-                        )
-                        axes[1].plot(
-                            time_steps,
-                            I_data_sir,
-                            label="Chorzy (Model SIR)",
-                            color="red",
-                            linestyle="--",
-                        )
-                        axes[1].plot(
-                            time_steps,
-                            R_data_sir,
-                            label="Odporni (Model SIR)",
-                            color="blue",
-                            linestyle="--",
-                        )
-                        axes[1].set_title("Model SIR")
-                        axes[1].set_xlabel("Czas")
-                        axes[1].set_ylabel("Liczba osób")
-                        axes[1].legend(loc="upper right")
-                    else:
-                        axes[1].set_title("Model SIR (brak danych)")
-
-                    plt.pause(0.01)
+                # Update the figure
+                fig.canvas.draw_idle() # Use draw_idle for efficiency
+                fig.canvas.flush_events()
 
         screen.fill(cfg.BACKGROUND_COLOR)
 
@@ -177,6 +187,14 @@ def main():
         )
         pygame.draw.rect(screen, (0, 0, 0), sim_area_rect, 2)
 
+        # Dynamic button text based on simulation state
+        if simulation_state == "idle":
+            start_button_text = "Start"
+        elif simulation_state == "running":
+            start_button_text = "Pause"
+        else:  # paused
+            start_button_text = "Resume"
+
         start_color = (
             cfg.BUTTON_HOVER_COLOR if start_hover else cfg.BUTTON_COLOR
         )
@@ -186,7 +204,7 @@ def main():
         draw_button(
             screen,
             start_button_rect,
-            "Start",
+            start_button_text,
             button_font,
             start_color,
             cfg.TEXT_COLOR,
@@ -202,11 +220,15 @@ def main():
 
         pygame.display.flip()
         clock.tick(60)
-        t += 1
+        
+        # Only increment time when running
+        if simulation_state == "running":
+            t += 1
 
     pygame.quit()
-    # plt.ioff()
-    # plt.show()
+    if cfg.SHOW_PLOTS and fig is not None:
+        plt.ioff()
+        plt.close(fig)
 
 
 if __name__ == "__main__":
